@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Call Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Devanagari:wght@400;600&display=swap">
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  .layout { max-width: 1320px; margin: 0 auto; padding: 20px; display: grid; gap: 20px;
+            grid-template-columns: 300px minmax(0, 1fr) 320px; align-items: start; }
+  @media (max-width: 1180px) { .layout { grid-template-columns: 280px minmax(0, 1fr); } .actions { grid-column: 1 / -1; } }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; padding: 16px; } }
+
+  /* Customers */
+  .customers { position: sticky; top: 76px; max-height: calc(100vh - 96px); display: flex; flex-direction: column; }
+  @media (max-width: 760px) { .customers { position: static; max-height: 340px; } }
+  .search { margin: 4px 12px 8px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--line);
+            background: var(--surface-2); color: var(--ink); font: inherit; outline: none; }
+  .search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .clist { overflow: auto; padding: 0 8px 8px; }
+  .citem { width: 100%; display: flex; gap: 12px; align-items: center; text-align: left; padding: 10px; border: 0;
+           border-radius: 12px; background: none; cursor: pointer; transition: background .15s; }
+  .citem:hover { background: var(--surface-2); }
+  .citem[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent); }
+  .citem:disabled { cursor: not-allowed; opacity: .6; }
+  .citem .meta { min-width: 0; flex: 1; }
+  .citem b { display: block; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .citem small { color: var(--muted); font-size: 12px; }
+  .citem .right { text-align: right; display: grid; gap: 4px; justify-items: end; }
+
+  /* Stage */
+  .stage { padding: 22px; display: grid; gap: 20px; }
+  .who { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .who .avatar { width: 52px; height: 52px; font-size: 18px; border-radius: 16px; }
+  .who h1 { margin: 0; font-size: 22px; letter-spacing: -.02em; }
+  .who .sub { color: var(--muted); font-size: 13px; }
+  .who .due { margin-left: auto; text-align: right; }
+  .who .due b { font-size: 26px; letter-spacing: -.02em; display: block; }
+  .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+  .role { border-radius: 14px; padding: 14px 16px; background: linear-gradient(135deg, var(--accent-soft), color-mix(in srgb, var(--accent-2) 10%, var(--surface)));
+          border: 1px solid color-mix(in srgb, var(--accent) 18%, transparent); display: grid; gap: 8px; }
+  .role .label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+  .role p { margin: 0; color: var(--ink); }
+  .pin { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--ink-2); }
+  .pin code { font: 700 15px/1 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .18em; padding: 6px 10px;
+              border-radius: 8px; background: var(--surface); border: 1px solid var(--line); color: var(--ink); }
+
+  .settings { display: grid; gap: 14px; }
+  .field-label { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 8px; letter-spacing: .02em; }
+  .segmented { display: inline-flex; padding: 4px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line); }
+  .segmented button { border: 0; background: none; padding: 8px 18px; border-radius: 9px; font-weight: 600; cursor: pointer; color: var(--ink-2); }
+  .segmented button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .voices { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+  .voice { border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 10px 12px; text-align: left;
+           cursor: pointer; display: flex; gap: 10px; align-items: center; transition: border-color .15s, box-shadow .15s; }
+  .voice:hover { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+  .voice[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .voice .vi { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; flex: none; font-size: 14px;
+               background: var(--accent-soft); color: var(--accent); }
+  .voice b { display: block; font-size: 13px; } .voice small { color: var(--muted); font-size: 11.5px; }
+  .settings.locked { opacity: .55; pointer-events: none; }
+
+  /* Call orb */
+  .callzone { display: grid; justify-items: center; gap: 14px; padding: 8px 0 4px; }
+  .orb-wrap { position: relative; width: 168px; height: 168px; display: grid; place-items: center; }
+  .halo { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--accent) 35%, transparent), transparent 70%);
+          transform: scale(calc(1 + var(--lvl, 0) * .9)); opacity: calc(.35 + var(--lvl, 0)); transition: transform .08s linear, opacity .08s linear; }
+  .orb { position: relative; width: 120px; height: 120px; border-radius: 50%; border: 0; cursor: pointer; color: #fff;
+         background: conic-gradient(from 200deg, var(--accent), var(--accent-2), #22c1ee, var(--accent));
+         box-shadow: var(--shadow-lg), inset 0 -10px 30px rgba(0,0,0,.18), inset 0 10px 30px rgba(255,255,255,.25);
+         display: grid; place-items: center; transition: transform .2s; }
+  .orb:hover:not(:disabled) { transform: scale(1.04); }
+  .orb:disabled { cursor: not-allowed; filter: grayscale(.6); opacity: .6; }
+  .orb svg { width: 40px; height: 40px; }
+  .orb.connecting { animation: spin 1.4s linear infinite; }
+  .orb.live { animation: breathe 3s ease-in-out infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes breathe { 50% { transform: scale(1.03); } }
+  .callstate { font-weight: 600; text-align: center; min-height: 22px; }
+  .callstate small { display: block; font-weight: 500; color: var(--muted); }
+  .controls { display: flex; gap: 10px; }
+  .ctl { border: 1px solid var(--line); background: var(--surface); padding: 9px 16px; border-radius: 999px; font-weight: 600;
+         cursor: pointer; display: inline-flex; gap: 8px; align-items: center; box-shadow: var(--shadow); }
+  .ctl.end { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .ctl[aria-pressed="true"] { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .err { color: var(--bad); background: var(--bad-soft); padding: 10px 14px; border-radius: 10px; font-size: 13px; }
+
+  /* Transcript */
+  .transcript { border-top: 1px solid var(--line); padding-top: 16px; display: flex; flex-direction: column; gap: 10px;
+                max-height: 420px; overflow: auto; scroll-behavior: smooth; }
+  .transcript[hidden] { display: none; }
+  .bubble { max-width: 78%; padding: 10px 14px; border-radius: 16px; animation: rise .25s ease both; font-size: 14.5px; }
+  .bubble .who-l { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 2px; }
+  .bubble.assistant { align-self: flex-start; background: var(--surface-2); border: 1px solid var(--line); border-bottom-left-radius: 6px; }
+  .bubble.user { align-self: flex-end; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; border-bottom-right-radius: 6px; }
+  .bubble.user .who-l { color: rgba(255,255,255,.75); }
+  .bubble.partial { opacity: .6; }
+
+  /* Actions panel */
+  .actions { position: sticky; top: 76px; }
+  @media (max-width: 1180px) { .actions { position: static; } }
+  .outcome { margin: 0 16px 8px; padding: 12px 14px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--line);
+             display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .placeholder { display: grid; place-items: center; text-align: center; gap: 10px; padding: 70px 20px; color: var(--muted); }
+  .placeholder .big { font-size: 40px; }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <div class="brand"><span class="brand-mark">₹</span><div><span id="merchant">AutoPay Recovery</span><small>AI voice agent · Razorpay AutoPay</small></div></div>
+  <nav class="tabs"><a href="/call" aria-current="page">Call console</a><a href="/">Dashboard</a></nav>
+</div></header>
+
+<main class="layout">
+  <aside class="card customers">
+    <div class="card-h"><h2>Customers</h2><span class="muted" id="count"></span></div>
+    <input class="search" id="search" placeholder="Search name or ID…" aria-label="Search customers">
+    <div class="clist" id="list"></div>
+  </aside>
+
+  <section class="card stage" id="stage">
+    <div class="placeholder"><div class="big">☎</div><b>Pick a customer to start a test call</b>
+      <span>You'll play the customer. The agent calls from your browser using your mic.</span></div>
+  </section>
+
+  <aside class="card actions">
+    <div class="card-h"><h2>Agent actions</h2><span class="dot" id="livedot"></span></div>
+    <div id="outcome"></div>
+    <ul class="timeline" id="timeline"><li class="empty" style="padding-left:0">Actions appear here live during the call.</li></ul>
+  </aside>
+</main>
+
+<script type="module">
+import * as vapiModule from "https://cdn.jsdelivr.net/npm/@vapi-ai/web@2.7.1/+esm";
+import { esc, inr, avatar, statusChip, FAILURE_LABEL, METHOD_LABEL, timelineItem } from "/static/common.js";
+// The SDK ships as CommonJS; jsDelivr's ESM build nests the class under default.default.
+const Vapi = vapiModule.default?.default ?? vapiModule.default;
+
+const $ = id => document.getElementById(id);
+const PHONE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6.6 10.8a15.1 15.1 0 0 0 6.6 6.6l2.2-2.2a1 1 0 0 1 1-.25 11.4 11.4 0 0 0 3.6.57 1 1 0 0 1 1 1V20a1 1 0 0 1-1 1A17 17 0 0 1 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.45.57 3.57a1 1 0 0 1-.25 1z"/></svg>';
+const WAVE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 10v4M8 7v10M12 4v16M16 7v10M20 10v4"/></svg>';
+
+const cfg = await (await fetch('/api/web-config')).json();
+$('merchant').textContent = cfg.merchant;
+const state = { selected: null, lang: 'en', voice: cfg.languages.en.default_voice, vapi: null, phase: 'idle',
+                callStartedAt: null, events: [], customers: cfg.customers, error: '' };
+let timer = null, partialEl = null;
+
+/* ---------- customers list ---------- */
+function renderList() {
+  const q = $('search').value.trim().toLowerCase();
+  const rows = state.customers.filter(c => !q || c.name.toLowerCase().includes(q) || c.id.toLowerCase().includes(q));
+  $('count').textContent = `${state.customers.length}`;
+  $('list').innerHTML = rows.map(c => `
+    <button class="citem" data-id="${c.id}" aria-pressed="${state.selected?.id === c.id}" ${state.phase !== 'idle' ? 'disabled' : ''}>
+      ${avatar(c.name, c.id)}
+      <span class="meta"><b>${esc(c.name)}</b><small>${c.id} · ${esc(FAILURE_LABEL[c.failure_reason] || c.failure_reason)}</small></span>
+      <span class="right"><span class="num" style="font-weight:600">${inr(c.total_due)}</span>${statusChip(c.status)}</span>
+    </button>`).join('') || '<div class="empty">No matches</div>';
+}
+$('search').addEventListener('input', renderList);
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('.citem'); if (!b || state.phase !== 'idle') return;
+  state.selected = state.customers.find(c => c.id === b.dataset.id);
+  state.error = ''; state.callStartedAt = null;
+  renderList(); renderStage(); renderActions();
+});
+
+/* ---------- stage ---------- */
+function renderStage() {
+  const c = state.customers.find(x => x.id === state.selected?.id); if (!c) return;
+  const voices = Object.entries(cfg.voices).filter(([, v]) => v.lang === state.lang);
+  const live = state.phase !== 'idle';
+  $('stage').innerHTML = `
+    <div class="who">
+      ${avatar(c.name, c.id)}
+      <div><h1>${esc(c.name)}</h1><div class="sub">${c.id} · ${esc(c.plan)}</div>
+        <div class="tags"><span class="tag">${esc(METHOD_LABEL[c.method] || c.method)}</span>
+        <span class="tag">${esc(FAILURE_LABEL[c.failure_reason] || c.failure_reason)}</span></div></div>
+      <div class="due"><span class="muted" style="font-size:12px">Overdue</span><b class="num">${inr(c.total_due)}</b></div>
+    </div>
+    <div class="role"><span class="label">Your role in this test</span><p>${esc(c.persona)}</p>
+      <span class="pin">PIN code on file <code>${esc(c.pincode)}</code><span class="muted">(fictional)</span></span></div>
+    <div class="settings ${live ? 'locked' : ''}">
+      <div><div class="field-label">Call language</div>
+        <div class="segmented" id="langs">${Object.entries(cfg.languages).map(([k, l]) =>
+          `<button data-lang="${k}" aria-pressed="${state.lang === k}">${esc(l.label)}</button>`).join('')}</div></div>
+      <div><div class="field-label">Agent voice</div>
+        <div class="voices" id="voices">${voices.map(([k, v]) => {
+          const [name, ...rest] = v.label.split(' · ');
+          return `<button class="voice" data-voice="${k}" aria-pressed="${state.voice === k}"><span class="vi">${rest[0] === 'male' ? '♂' : '♀'}</span>
+            <span><b>${esc(name)}</b><small>${esc(rest.join(' · '))}</small></span></button>`; }).join('')}</div></div>
+    </div>
+    <div class="callzone">
+      <div class="orb-wrap"><div class="halo" id="halo"></div>
+        <button class="orb ${state.phase}" id="orb" aria-label="${live ? 'Call in progress' : 'Start call'}" ${!cfg.publicKey || state.phase === 'connecting' ? 'disabled' : ''}>
+          ${state.phase === 'live' ? WAVE : PHONE}</button></div>
+      <div class="callstate" id="callstate">${callStateText()}</div>
+      ${state.phase === 'live' ? `<div class="controls">
+        <button class="ctl" id="mute" aria-pressed="${!!state.vapi?.isMuted?.()}">🎙 ${state.vapi?.isMuted?.() ? 'Unmute' : 'Mute'}</button>
+        <button class="ctl end" id="end">End call</button></div>` : ''}
+      ${state.error ? `<div class="err">${esc(state.error)}</div>` : ''}
+      ${!cfg.publicKey ? '<div class="err">Missing VAPI_PUBLIC_KEY in .env. Add it, then restart the server.</div>' : ''}
+    </div>
+    <div class="transcript" id="transcript" ${live || $('transcript')?.children.length ? '' : 'hidden'}></div>`;
+  wireStage();
+}
+
+let transcriptHtml = '';
+function wireStage() {
+  if (transcriptHtml && $('transcript')) { $('transcript').innerHTML = transcriptHtml; $('transcript').hidden = false; }
+  $('langs')?.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    state.lang = b.dataset.lang; state.voice = cfg.languages[state.lang].default_voice; renderStage();
+  });
+  $('voices')?.addEventListener('click', e => {
+    const b = e.target.closest('.voice'); if (!b) return; state.voice = b.dataset.voice; renderStage();
+  });
+  $('orb')?.addEventListener('click', () => state.phase === 'idle' && startCall());
+  $('end')?.addEventListener('click', () => state.vapi?.stop());
+  $('mute')?.addEventListener('click', () => { state.vapi.setMuted(!state.vapi.isMuted()); renderStage(); });
+}
+
+function callStateText() {
+  const voiceName = cfg.voices[state.voice]?.label.split(' · ')[0];
+  if (state.phase === 'connecting') return 'Connecting…<small>Allow microphone access if asked</small>';
+  if (state.phase === 'live') return `<span id="clock">00:00</span><small>Live with ${esc(voiceName)} · speak naturally</small>`;
+  return state.callStartedAt ? 'Call ended<small>Start another call or check the dashboard</small>'
+                             : `Start call<small>${esc(voiceName)} will greet you in ${state.lang === 'hi' ? 'Hindi' : 'English'}</small>`;
+}
+
+function addBubble(role, text, partial = false) {
+  const t = $('transcript'); if (!t) return;
+  t.hidden = false;
+  if (partialEl && partialEl.dataset.role === role) { partialEl.remove(); partialEl = null; }
+  const d = document.createElement('div');
+  d.className = `bubble ${role}${partial ? ' partial' : ''}`; d.dataset.role = role;
+  const label = role === 'assistant' ? cfg.voices[state.voice].label.split(' · ')[0] : state.selected.name.split(' ')[0] + ' (you)';
+  d.innerHTML = `<span class="who-l">${esc(label)}</span>${esc(text)}`;
+  t.appendChild(d); t.scrollTop = t.scrollHeight;
+  if (partial) partialEl = d;
+  transcriptHtml = t.innerHTML;
+}
+
+/* ---------- call lifecycle ---------- */
+async function startCall() {
+  state.phase = 'connecting'; state.error = ''; transcriptHtml = ''; state.callStartedAt = new Date();
+  renderList(); renderStage(); renderActions();
+  try {
+    const overrides = await (await fetch(`/api/call-overrides/${state.selected.id}?lang=${state.lang}&voice=${state.voice}`)).json();
+    const v = new Vapi(cfg.publicKey); state.vapi = v;
+    v.on('call-start', () => {
+      state.phase = 'live'; renderStage(); $('livedot').classList.add('live');
+      const t0 = Date.now();
+      timer = setInterval(() => { const s = Math.floor((Date.now() - t0) / 1000);
+        if ($('clock')) $('clock').textContent = `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; }, 500);
+    });
+    v.on('call-end', endCleanup);
+    v.on('volume-level', lvl => $('halo')?.style.setProperty('--lvl', Math.min(1, lvl * 1.6).toFixed(2)));
+    v.on('error', e => { state.error = e?.error?.message || e?.errorMsg || e?.message || 'Call error'; if (state.phase !== 'live') endCleanup(); else renderStage(); });
+    v.on('message', m => {
+      if (m.type === 'transcript') addBubble(m.role === 'assistant' ? 'assistant' : 'user', m.transcript, m.transcriptType !== 'final');
+    });
+    const call = await v.start(cfg.assistantId, overrides);
+    if (call?.id) await fetch('/api/register-call', { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ call_id: call.id, customer_id: state.selected.id, lang: state.lang, voice: state.voice }) });
+    else if (state.phase === 'connecting') throw new Error('Vapi did not start the call');
+  } catch (e) {
+    state.error = `Could not start the call: ${e?.message || e}`; endCleanup();
+  }
+}
+
+function endCleanup() {
+  clearInterval(timer); state.phase = 'idle'; state.vapi = null; partialEl = null;
+  $('livedot').classList.remove('live'); renderList(); renderStage(); poll();
+}
+
+/* ---------- live actions (polls server audit log) ---------- */
+function renderActions() {
+  const c = state.selected;
+  if (!c) return;
+  const since = state.callStartedAt ? state.callStartedAt.getTime() - 5000 : 0;
+  const evs = state.events.filter(e => e.customer_id === c.id && e.kind !== 'status' &&
+                                       new Date(e.created_at.replace(' ', 'T') + 'Z').getTime() >= since).reverse();
+  const cur = state.customers.find(x => x.id === c.id);
+  $('outcome').innerHTML = `<div class="outcome"><span class="muted" style="font-size:13px">Account status</span>${statusChip(cur.status)}</div>`;
+  $('timeline').innerHTML = evs.map(e => timelineItem(e)).join('') ||
+    `<li class="empty" style="padding-left:0">${state.callStartedAt ? 'Waiting for the agent…' : 'Actions appear here live during the call.'}</li>`;
+}
+
+async function poll() {
+  try {
+    const s = await (await fetch('/api/state')).json();
+    state.events = s.events;
+    const byId = Object.fromEntries(s.customers.map(c => [c.id, c]));
+    state.customers = state.customers.map(c => ({ ...c, status: byId[c.id].status, disposition: byId[c.id].disposition,
+                                                  total_due: byId[c.id].amount_due + byId[c.id].late_fee }));
+    if (state.phase === 'idle') renderList();
+    renderActions();
+  } catch {}
+}
+renderList(); poll(); setInterval(poll, 2000);
+</script>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recovery Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/static/style.css">
+<style>
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 20px; display: grid; gap: 20px; }
+  @media (max-width: 760px) { .wrap { padding: 16px; } }
+  .hero { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+  .hero h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; }
+  .hero p { margin: 4px 0 0; color: var(--muted); }
+  .btn { padding: 10px 16px; border-radius: 12px; font-weight: 600; color: #fff; display: inline-flex; gap: 8px; align-items: center;
+         background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow-lg); }
+
+  .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 960px) { .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .kpi { padding: 16px 18px; position: relative; overflow: hidden; }
+  .kpi span { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .kpi b { display: block; font-size: 28px; letter-spacing: -.02em; margin-top: 4px; }
+  .kpi small { color: var(--muted); font-size: 12px; }
+  .kpi .bar { height: 6px; border-radius: 99px; background: var(--surface-2); margin-top: 10px; overflow: hidden; }
+  .kpi .bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--accent), var(--accent-2));
+                transition: width .6s cubic-bezier(.2,.8,.2,1); }
+
+  .breakdown { padding: 16px 18px; display: grid; gap: 12px; }
+  .stack { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--surface-2); }
+  .stack i { transition: flex-grow .6s; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }
+  @media (max-width: 1080px) { .grid { grid-template-columns: 1fr; } }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 700;
+       padding: 10px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
+  tr:last-child td { border-bottom: 0; }
+  tbody tr { transition: background .15s; } tbody tr:hover { background: var(--surface-2); }
+  .person { display: flex; gap: 12px; align-items: center; }
+  .person b { display: block; } .person small { color: var(--muted); }
+  td.amt { text-align: right; font-weight: 600; }
+  .feed { max-height: 640px; overflow: auto; }
+  tr.flash { animation: flash 1.2s ease; }
+  @keyframes flash { from { background: var(--accent-soft); } }
+</style>
+</head>
+<body>
+<header class="topbar"><div class="topbar-inner">
+  <div class="brand"><span class="brand-mark">₹</span><div><span id="merchant">AutoPay Recovery</span><small>AI voice agent · Razorpay AutoPay</small></div></div>
+  <span class="mode-pill" id="mode"></span>
+  <nav class="tabs"><a href="/call">Call console</a><a href="/" aria-current="page">Dashboard</a></nav>
+</div></header>
+
+<main class="wrap">
+  <div class="hero">
+    <div><h1>Recovery overview</h1><p id="asof">Failed AutoPay debits and what the voice agent did about them</p></div>
+    <a class="btn" href="/call">☎ Start a test call</a>
+  </div>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="card breakdown">
+    <div class="card-h" style="padding:0"><h2>Outcomes across 10 customers</h2><span class="muted" id="contacted"></span></div>
+    <div class="stack" id="stack"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <div class="card-h"><h2>Customers</h2><span class="muted" style="font-size:12px">Updates live</span></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Customer</th><th>Payment method</th><th>Why it failed</th><th style="text-align:right">Due</th><th>Status</th><th>Last outcome</th></tr></thead>
+        <tbody id="rows"></tbody></table></div>
+    </section>
+    <section class="card">
+      <div class="card-h"><h2>Live activity</h2><span class="dot live"></span></div>
+      <ul class="timeline feed" id="events"></ul>
+    </section>
+  </div>
+</main>
+
+<script type="module">
+import { esc, inr, avatar, statusChip, STATUS_LABEL, FAILURE_LABEL, METHOD_LABEL, timelineItem } from "/static/common.js";
+const $ = id => document.getElementById(id);
+const ORDER = ['link_sent', 'plan', 'promised', 'escalated', 'dnc', 'unresolved', 'pending'];
+const COLOR = { link_sent: 'var(--ok)', plan: 'color-mix(in srgb, var(--ok) 60%, var(--accent))', promised: 'var(--info)',
+                escalated: 'var(--warn)', dnc: 'var(--bad)', unresolved: 'color-mix(in srgb, var(--bad) 55%, var(--idle))', pending: 'color-mix(in srgb, var(--idle) 30%, transparent)' };
+const DISP = { paid_via_link_sent: 'Paying via link', retry_scheduled: 'Retry scheduled', installment_plan: 'Installment plan',
+  autopay_setup_link_sent: 'AutoPay re-setup', dispute_escalated: 'Dispute escalated', escalated_other: 'Escalated',
+  wrong_party: 'Wrong person', verification_failed: 'Verification failed', callback_requested: 'Callback requested',
+  refused: 'Refused', do_not_call: 'Do not call', voicemail: 'Voicemail', no_answer: 'No answer' };
+let prev = {};
+
+async function refresh() {
+  let s; try { s = await (await fetch('/api/state')).json(); } catch { return; }
+  $('mode').innerHTML = `<span class="dot ${s.razorpay_live ? 'live' : ''}"></span>Razorpay ${s.razorpay_live ? 'test mode' : 'mock links'}`;
+  const due = c => c.amount_due + c.late_fee;
+  const cs = s.customers;
+  const total = cs.reduce((a, c) => a + due(c), 0);
+  const actioned = cs.filter(c => ['link_sent', 'promised', 'plan'].includes(c.status));
+  const reached = cs.filter(c => c.status !== 'pending');
+  const val = actioned.reduce((a, c) => a + due(c), 0);
+  const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+  const kpis = [
+    ['Overdue at stake', inr(total), `${cs.length} failed AutoPay debits`, 100],
+    ['Recovery actions', `${actioned.length}/${cs.length}`, 'Link sent, retry or plan agreed', pct(actioned.length, cs.length)],
+    ['Value on track', inr(val), `${pct(val, total)}% of overdue amount`, pct(val, total)],
+    ['Calls handled', s.calls.length, `${reached.length} customers reached`, pct(reached.length, cs.length)],
+  ];
+  $('kpis').innerHTML = kpis.map(([k, v, sub, p]) => `<div class="card kpi"><span>${k}</span><b class="num">${v}</b>
+    <small>${sub}</small><div class="bar"><i style="width:${p}%"></i></div></div>`).join('');
+
+  const counts = Object.fromEntries(ORDER.map(k => [k, cs.filter(c => c.status === k).length]));
+  $('stack').innerHTML = ORDER.filter(k => counts[k]).map(k => `<i title="${STATUS_LABEL[k]}: ${counts[k]}" style="flex-grow:${counts[k]};background:${COLOR[k]}"></i>`).join('');
+  $('legend').innerHTML = ORDER.filter(k => counts[k]).map(k => `<span><i style="background:${COLOR[k]}"></i>${STATUS_LABEL[k]} · ${counts[k]}</span>`).join('');
+  $('contacted').textContent = `${reached.length} of ${cs.length} contacted`;
+
+  $('rows').innerHTML = cs.map(c => {
+    const changed = prev[c.id] && prev[c.id] !== c.status;
+    return `<tr class="${changed ? 'flash' : ''}"><td><div class="person">${avatar(c.name, c.id)}<div><b>${esc(c.name)}</b><small title="${esc(c.plan)}">${c.id}</small></div></div></td>
+      <td><span class="tag">${esc(METHOD_LABEL[c.method] || c.method)}</span></td>
+      <td>${esc(FAILURE_LABEL[c.failure_reason] || c.failure_reason)}</td>
+      <td class="amt num">${inr(due(c))}${c.late_fee ? `<br><small class="muted" style="font-weight:500">incl. ${inr(c.late_fee)} fee</small>` : ''}</td>
+      <td>${statusChip(c.status)}</td><td class="muted">${esc(DISP[c.disposition] || '—')}</td></tr>`;
+  }).join('');
+  prev = Object.fromEntries(cs.map(c => [c.id, c.status]));
+
+  $('events').innerHTML = s.events.filter(e => e.kind !== 'status').slice(0, 60).map(e => timelineItem(e, true)).join('')
+    || '<li class="empty" style="padding-left:0">No activity yet. Start a test call.</li>';
+}
+const m = await (await fetch('/api/web-config')).json(); $('merchant').textContent = m.merchant;
+refresh(); setInterval(refresh, 2500);
+</script>
+</body>
+</html>

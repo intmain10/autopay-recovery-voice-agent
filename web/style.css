@@ -1,0 +1,112 @@
+/* Shared design system for the call console and dashboard. */
+:root {
+  --bg: #f4f6fb;
+  --bg-grad: radial-gradient(1200px 600px at 10% -10%, #e3ebff 0%, transparent 60%),
+             radial-gradient(900px 500px at 110% 10%, #efe6ff 0%, transparent 55%);
+  --surface: #ffffff;
+  --surface-2: #f7f8fc;
+  --ink: #0f1a33;
+  --ink-2: #44506b;
+  --muted: #7a859e;
+  --line: #e6e9f2;
+  --accent: #2f6bff;
+  --accent-2: #7b5cff;
+  --accent-soft: #eaf0ff;
+  --ok: #12a46b;     --ok-soft: #e3f7ee;
+  --warn: #d98a00;   --warn-soft: #fff4dc;
+  --bad: #e5484d;    --bad-soft: #fde8e8;
+  --info: #2f6bff;   --info-soft: #eaf0ff;
+  --idle: #8a94ab;   --idle-soft: #eef0f5;
+  --shadow: 0 1px 2px rgba(15, 26, 51, .04), 0 8px 24px rgba(15, 26, 51, .06);
+  --shadow-lg: 0 20px 60px rgba(47, 107, 255, .18);
+  --radius: 16px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1020;
+    --bg-grad: radial-gradient(1200px 600px at 10% -10%, #16224a 0%, transparent 60%),
+               radial-gradient(900px 500px at 110% 10%, #24164a 0%, transparent 55%);
+    --surface: #121a2e; --surface-2: #0f1628; --ink: #eef2fb; --ink-2: #b5bfd6; --muted: #7d88a3;
+    --line: #1f2a44; --accent: #5b8cff; --accent-2: #9a80ff; --accent-soft: #18264d;
+    --ok: #34d399; --ok-soft: #0f2e25; --warn: #fbbf24; --warn-soft: #33270b;
+    --bad: #f87171; --bad-soft: #3a1518; --info: #5b8cff; --info-soft: #18264d;
+    --idle: #8a94ab; --idle-soft: #1a2238;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.25);
+    --shadow-lg: 0 20px 60px rgba(91, 140, 255, .22);
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font: 14px/1.5 "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", sans-serif;
+  background: var(--bg-grad), var(--bg); background-attachment: fixed;
+  color: var(--ink); min-height: 100vh; -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+a { color: var(--accent); text-decoration: none; }
+
+/* --- Top bar ------------------------------------------------------------------------ */
+.topbar {
+  position: sticky; top: 0; z-index: 10; backdrop-filter: saturate(1.4) blur(14px);
+  background: color-mix(in srgb, var(--bg) 72%, transparent); border-bottom: 1px solid var(--line);
+}
+.topbar-inner { max-width: 1320px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 16px; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -.01em; }
+.brand-mark {
+  width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: var(--shadow-lg);
+}
+.brand small { display: block; font-weight: 500; color: var(--muted); font-size: 12px; margin-top: -2px; }
+.tabs { margin-left: auto; display: flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--line);
+        border-radius: 12px; box-shadow: var(--shadow); }
+.tabs a { padding: 6px 14px; border-radius: 8px; color: var(--ink-2); font-weight: 600; font-size: 13px; }
+.tabs a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
+.mode-pill { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--idle); display: inline-block; }
+.dot.live { background: var(--ok); box-shadow: 0 0 0 4px color-mix(in srgb, var(--ok) 25%, transparent); }
+
+/* --- Generic cards / chips --------------------------------------------------------- */
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+.card-h { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 6px; }
+.card-h h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 12px;
+        font-weight: 600; white-space: nowrap; background: var(--idle-soft); color: var(--idle); }
+.chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.s-link_sent, .s-plan { background: var(--ok-soft); color: var(--ok); }
+.s-promised { background: var(--info-soft); color: var(--info); }
+.s-escalated { background: var(--warn-soft); color: var(--warn); }
+.s-dnc, .s-unresolved { background: var(--bad-soft); color: var(--bad); }
+.tag { font-size: 11px; font-weight: 600; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--line);
+       padding: 2px 8px; border-radius: 6px; white-space: nowrap; }
+.avatar { width: 36px; height: 36px; flex: none; border-radius: 12px; display: grid; place-items: center; font-weight: 700;
+          font-size: 13px; color: #fff; }
+.muted { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; }
+.empty { padding: 28px 16px; text-align: center; color: var(--muted); }
+.timeline li.empty { padding: 18px 0; animation: none; }
+.timeline li.empty::before { display: none; }
+
+/* --- Timeline (agent actions) ------------------------------------------------------ */
+.timeline { list-style: none; margin: 0; padding: 4px 16px 16px; }
+.timeline li { position: relative; padding: 8px 0 8px 34px; animation: rise .35s ease both; }
+.timeline li::before { content: ""; position: absolute; left: 11px; top: 30px; bottom: -8px; width: 2px; background: var(--line); }
+.timeline li:last-child::before { display: none; }
+.timeline .ico { position: absolute; left: 0; top: 8px; width: 24px; height: 24px; border-radius: 8px; display: grid;
+                 place-items: center; font-size: 13px; background: var(--idle-soft); }
+.timeline .ok .ico { background: var(--ok-soft); color: var(--ok); }
+.timeline .fail .ico { background: var(--bad-soft); color: var(--bad); }
+.timeline .info .ico { background: var(--info-soft); color: var(--info); }
+.timeline b { display: block; font-size: 13px; }
+.timeline small { color: var(--muted); font-size: 12px; display: block; }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+
+@media (max-width: 600px) {
+  .topbar-inner { padding: 10px 16px; gap: 10px; }
+  .brand small, .mode-pill { display: none; }
+  .tabs a { padding: 6px 10px; white-space: nowrap; }
+}
